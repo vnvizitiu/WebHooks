@@ -39,7 +39,7 @@ namespace Microsoft.AspNet.WebHooks
         public static SettingsDictionary GetSettings(this IDependencyScope services)
         {
             SettingsDictionary settings = services.GetService<SettingsDictionary>();
-            return settings ?? CommonServices.GetSettings();
+            return settings != null && settings.Count > 0 ? settings : CommonServices.GetSettings();
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (services == null)
             {
-                throw new ArgumentNullException("services");
+                throw new ArgumentNullException(nameof(services));
             }
             return (TService)services.GetService(typeof(TService));
         }
@@ -69,7 +69,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (services == null)
             {
-                throw new ArgumentNullException("services");
+                throw new ArgumentNullException(nameof(services));
             }
 
             return services.GetServices(typeof(TService)).Cast<TService>();

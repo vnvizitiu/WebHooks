@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using Microsoft.TestUtilities;
 using Newtonsoft.Json;
 using Xunit;
@@ -17,6 +19,25 @@ namespace Microsoft.AspNet.WebHooks
         public WebHookTests()
         {
             _webHook = new WebHook();
+        }
+
+        public enum ValidationOutcome
+        {
+            Valid = 0,
+            Required,
+            Invalid
+        }
+
+        public static TheoryData<Uri, ValidationOutcome> WebHookUriData
+        {
+            get
+            {
+                return new TheoryData<Uri, ValidationOutcome>
+                {
+                    { null, ValidationOutcome.Required },
+                    { new Uri("http://localhost"), ValidationOutcome.Valid },
+                };
+            }
         }
 
         [Fact]
@@ -36,6 +57,37 @@ namespace Microsoft.AspNet.WebHooks
         public void Secret_Roundtrips()
         {
             PropertyAssert.Roundtrips(_webHook, w => w.Secret, PropertySetter.NullRoundtrips, roundtripValue: "你好世界");
+        }
+
+        [Theory]
+        [MemberData(nameof(WebHookUriData))]
+        public void WebHookUri_Validates(Uri uri, ValidationOutcome expected)
+        {
+            // Arrange
+            WebHook webHook = new WebHook { WebHookUri = uri };
+            var validationResults = new List<ValidationResult>();
+            var context = new ValidationContext(webHook) { MemberName = "WebHookUri" };
+
+            // Act
+            bool actual = Validator.TryValidateProperty(webHook.WebHookUri, context, validationResults);
+
+            // Assert
+            switch (expected)
+            {
+                case ValidationOutcome.Valid:
+                    Assert.True(actual);
+                    break;
+
+                case ValidationOutcome.Required:
+                    Assert.False(actual);
+                    Assert.Equal("The WebHookUri field is required.", validationResults.Single().ErrorMessage);
+                    Assert.Equal("WebHookUri", validationResults.Single().MemberNames.Single());
+                    break;
+
+                default:
+                    Assert.True(false);
+                    break;
+            }
         }
 
         [Fact]

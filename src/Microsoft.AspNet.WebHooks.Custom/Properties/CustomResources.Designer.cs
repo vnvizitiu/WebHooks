@@ -106,6 +106,15 @@ namespace Microsoft.AspNet.WebHooks.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The WebHook registrar requested no verification of WebHook URI..
+        /// </summary>
+        internal static string Manager_NoEcho {
+            get {
+                return ResourceManager.GetString("Manager_NoEcho", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The WebHook URI must be absolute with a scheme of either &apos;http&apos; or &apos;https&apos; but received &apos;{0}&apos;..
         /// </summary>
         internal static string Manager_NoHttpUri {
@@ -183,6 +192,15 @@ namespace Microsoft.AspNet.WebHooks.Properties {
         internal static string Notification_KeyNotFound {
             get {
                 return ResourceManager.GetString("Notification_KeyNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid &apos;{0}&apos; instance: &apos;{1}&apos; cannot be null..
+        /// </summary>
+        internal static string Sender_BadWorkItem {
+            get {
+                return ResourceManager.GetString("Sender_BadWorkItem", resourceCulture);
             }
         }
         

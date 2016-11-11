@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -18,6 +19,7 @@ namespace Microsoft.AspNet.WebHooks
     /// </summary>
     public class WebHookManager : IWebHookManager, IDisposable
     {
+        internal const string NoEchoParameter = "noecho";
         internal const string EchoParameter = "echo";
 
         private readonly IWebHookStore _webHookStore;
@@ -46,15 +48,15 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (webHookStore == null)
             {
-                throw new ArgumentNullException("webHookStore");
+                throw new ArgumentNullException(nameof(webHookStore));
             }
             if (webHookSender == null)
             {
-                throw new ArgumentNullException("webHookSender");
+                throw new ArgumentNullException(nameof(webHookSender));
             }
             if (logger == null)
             {
-                throw new ArgumentNullException("logger");
+                throw new ArgumentNullException(nameof(logger));
             }
 
             _webHookStore = webHookStore;
@@ -65,69 +67,18 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         /// <inheritdoc />
-        public async Task VerifyWebHookAsync(WebHook webHook)
+        public virtual async Task VerifyWebHookAsync(WebHook webHook)
         {
             if (webHook == null)
             {
-                throw new ArgumentNullException("webHook");
+                throw new ArgumentNullException(nameof(webHook));
             }
 
-            // Check that WebHook URI is either 'http' or 'https'
-            if (!(webHook.WebHookUri.IsHttp() || webHook.WebHookUri.IsHttps()))
-            {
-                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_NoHttpUri, webHook.WebHookUri);
-                _logger.Error(msg);
-                throw new InvalidOperationException(msg);
-            }
+            VerifySecret(webHook.Secret);
 
-            // Create the echo query parameter that we want returned in response body as plain text.
-            string echo = Guid.NewGuid().ToString("N");
+            VerifyUri(webHook.WebHookUri);
 
-            HttpResponseMessage response;
-            try
-            {
-                // Get request URI with echo query parameter
-                UriBuilder webHookUri = new UriBuilder(webHook.WebHookUri);
-                webHookUri.Query = EchoParameter + "=" + echo;
-
-                // Create request adding any additional request headers (not entity headers) from Web Hook
-                HttpRequestMessage hookRequest = new HttpRequestMessage(HttpMethod.Get, webHookUri.Uri);
-                foreach (var kvp in webHook.Headers)
-                {
-                    hookRequest.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
-                }
-
-                response = await _httpClient.SendAsync(hookRequest);
-            }
-            catch (Exception ex)
-            {
-                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_VerifyFailure, ex.Message);
-                _logger.Error(msg, ex);
-                throw new InvalidOperationException(msg);
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_VerifyFailure, response.StatusCode);
-                _logger.Info(msg);
-                throw new InvalidOperationException(msg);
-            }
-
-            // Verify response body
-            if (response.Content == null)
-            {
-                string msg = CustomResources.Manager_VerifyNoBody;
-                _logger.Error(msg);
-                throw new InvalidOperationException(msg);
-            }
-
-            string actualEcho = await response.Content.ReadAsStringAsync();
-            if (!string.Equals(actualEcho, echo, StringComparison.Ordinal))
-            {
-                string msg = CustomResources.Manager_VerifyBadEcho;
-                _logger.Error(msg);
-                throw new InvalidOperationException(msg);
-            }
+            await VerifyEchoAsync(webHook);
         }
 
         /// <inheritdoc />
@@ -135,11 +86,11 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (user == null)
             {
-                throw new ArgumentNullException("user");
+                throw new ArgumentNullException(nameof(user));
             }
             if (notifications == null)
             {
-                throw new ArgumentNullException("notifications");
+                throw new ArgumentNullException(nameof(notifications));
             }
 
             // Get all actions in this batch
@@ -162,7 +113,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (notifications == null)
             {
-                throw new ArgumentNullException("notifications");
+                throw new ArgumentNullException(nameof(notifications));
             }
 
             // Get all actions in this batch
@@ -231,6 +182,99 @@ namespace Microsoft.AspNet.WebHooks
                         _httpClient.Dispose();
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Verifies the WebHook by submitting a GET request with a query token intended by the echoed back.
+        /// </summary>
+        /// <param name="webHook">The <see cref="WebHook"/> to verify.</param>
+        protected virtual async Task VerifyEchoAsync(WebHook webHook)
+        {
+            // Create the echo query parameter that we want returned in response body as plain text.
+            string echo = Guid.NewGuid().ToString("N");
+
+            HttpResponseMessage response;
+            try
+            {
+                // If WebHook URI contains a "NoEcho" query parameter then we don't verify the URI using a GET request
+                NameValueCollection parameters = webHook.WebHookUri.ParseQueryString();
+                if (parameters[NoEchoParameter] != null)
+                {
+                    string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_NoEcho);
+                    _logger.Info(msg);
+                    return;
+                }
+
+                // Get request URI with echo query parameter
+                UriBuilder webHookUri = new UriBuilder(webHook.WebHookUri);
+                webHookUri.Query = EchoParameter + "=" + echo;
+
+                // Create request adding any additional request headers (not entity headers) from Web Hook
+                HttpRequestMessage hookRequest = new HttpRequestMessage(HttpMethod.Get, webHookUri.Uri);
+                foreach (var kvp in webHook.Headers)
+                {
+                    hookRequest.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
+                }
+
+                response = await _httpClient.SendAsync(hookRequest);
+            }
+            catch (Exception ex)
+            {
+                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_VerifyFailure, ex.Message);
+                _logger.Error(msg, ex);
+                throw new InvalidOperationException(msg);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_VerifyFailure, response.StatusCode);
+                _logger.Info(msg);
+                throw new InvalidOperationException(msg);
+            }
+
+            // Verify response body
+            if (response.Content == null)
+            {
+                string msg = CustomResources.Manager_VerifyNoBody;
+                _logger.Error(msg);
+                throw new InvalidOperationException(msg);
+            }
+
+            string actualEcho = await response.Content.ReadAsStringAsync();
+            if (!string.Equals(actualEcho, echo, StringComparison.Ordinal))
+            {
+                string msg = CustomResources.Manager_VerifyBadEcho;
+                _logger.Error(msg);
+                throw new InvalidOperationException(msg);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that the <paramref name="webHookUri"/> has either an 'http' or 'https' scheme.
+        /// </summary>
+        /// <param name="webHookUri">The URI to verify.</param>
+        protected virtual void VerifyUri(Uri webHookUri)
+        {
+            // Check that WebHook URI scheme is either '<c>http</c>' or '<c>https</c>'.
+            if (!(webHookUri.IsHttp() || webHookUri.IsHttps()))
+            {
+                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Manager_NoHttpUri, webHookUri);
+                _logger.Error(msg);
+                throw new InvalidOperationException(msg);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that the <see cref="WebHook"/> secret is between 32 and 64 characters long.
+        /// </summary>
+        /// <param name="secret">The <see cref="WebHook"/> secret to validate.</param>
+        protected virtual void VerifySecret(string secret)
+        {
+            // Check that we have a valid secret
+            if (string.IsNullOrEmpty(secret) || secret.Length < 32 || secret.Length > 64)
+            {
+                throw new InvalidOperationException(CustomResources.WebHook_InvalidSecret);
             }
         }
     }

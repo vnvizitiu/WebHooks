@@ -16,6 +16,7 @@ using Microsoft.AspNet.WebHooks.Diagnostics;
 using Microsoft.AspNet.WebHooks.Mocks;
 using Microsoft.TestUtilities.Mocks;
 using Moq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -103,6 +104,7 @@ namespace Microsoft.AspNet.WebHooks
                 };
             }
         }
+
         public static TheoryData<string, string, string, int, int> ValidConfigData
         {
             get
@@ -118,6 +120,23 @@ namespace Microsoft.AspNet.WebHooks
                     { "Receiver", "1", "12345678", 2, 16 },
                     { "RECEIVER", "1234567890", "12345678", 2, 16 },
                     { WebHookReceiverMock.ReceiverName, "你好", "12345678", 2, 16 },
+                };
+            }
+        }
+
+        public static TheoryData<string, Type> ValidJsonData
+        {
+            get
+            {
+                return new TheoryData<string, Type>
+                {
+                    { "{}", typeof(JObject) },
+                    { "{\"k\":\"v\"}", typeof(JObject) },
+                    { "[]", typeof(JArray) },
+                    { "[1,2,3]", typeof(JArray) },
+                    { "\"data\"", typeof(JValue) },
+                    { "1234", typeof(JValue) },
+                    { "1234.5678", typeof(JValue) },
                 };
             }
         }
@@ -138,7 +157,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("InvalidCodeQueries")]
+        [MemberData(nameof(InvalidCodeQueries))]
         public async Task EnsureValidCode_Throws_IfNoCodeParameter(string query)
         {
             // Arrange
@@ -154,7 +173,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ValidIdData")]
+        [MemberData(nameof(ValidIdData))]
         public async Task EnsureValidCode_Throws_IfWrongCodeParameter(string id)
         {
             // Arrange
@@ -170,7 +189,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ValidIdData")]
+        [MemberData(nameof(ValidIdData))]
         public void EnsureValidCode_Succeeds_IfRightCodeParameter(string id)
         {
             // Arrange
@@ -249,7 +268,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ValidConfigData")]
+        [MemberData(nameof(ValidConfigData))]
         public async Task GetReceiverConfig_Succeeds_IfValidSecret(string name, string id, string secret, int minLength, int maxLength)
         {
             // Arrange
@@ -373,6 +392,82 @@ namespace Microsoft.AspNet.WebHooks
 
             // Assert
             Assert.Equal("v", actual["k"]);
+        }
+
+        [Fact]
+        public async Task ReadAsJsonTokenAsync_Throws_IfNullBody()
+        {
+            // Arrange
+            Initialize(TestSecret);
+
+            // Act
+            HttpResponseException ex = await Assert.ThrowsAsync<HttpResponseException>(() => _receiverMock.ReadAsJsonTokenAsync(_request));
+
+            // Assert
+            HttpError error = await ex.Response.Content.ReadAsAsync<HttpError>();
+            Assert.Equal("The WebHook request entity body cannot be empty.", error.Message);
+        }
+
+        [Fact]
+        public async Task ReadAsJsonTokenAsync_Throws_IfNotJson()
+        {
+            // Arrange
+            Initialize(TestSecret);
+            _request.Content = new StringContent("Hello World", Encoding.UTF8, "text/plain");
+
+            // Act
+            HttpResponseException ex = await Assert.ThrowsAsync<HttpResponseException>(() => _receiverMock.ReadAsJsonTokenAsync(_request));
+
+            // Assert
+            HttpError error = await ex.Response.Content.ReadAsAsync<HttpError>();
+            Assert.Equal("The WebHook request must contain an entity body formatted as JSON.", error.Message);
+        }
+
+        [Fact]
+        public async Task ReadAsJsonTokenAsync_Throws_IfInvalidJson()
+        {
+            // Arrange
+            Initialize(TestSecret);
+            _request.Content = new StringContent("I n v a l i d  J S O N", Encoding.UTF8, "application/json");
+
+            // Act
+            HttpResponseException ex = await Assert.ThrowsAsync<HttpResponseException>(() => _receiverMock.ReadAsJsonTokenAsync(_request));
+
+            // Assert
+            HttpError error = await ex.Response.Content.ReadAsAsync<HttpError>();
+            Assert.Equal("The WebHook request contained invalid JSON: 'Error parsing positive infinity value. Path '', line 0, position 0.'.", error.Message);
+        }
+
+        [Fact]
+        public async Task ReadAsJsonTokenAsync_Handles_UtcDateTime()
+        {
+            // Arrange
+            DateTime expectedDateTime = DateTime.Parse("2015-09-26T04:26:55.6393049Z").ToUniversalTime();
+            Initialize(TestSecret);
+            _request.Content = new StringContent("{ \"datetime\": \"2015-09-26T04:26:55.6393049Z\" }", Encoding.UTF8, "application/json");
+
+            // Act
+            JToken actual = await _receiverMock.ReadAsJsonTokenAsync(_request);
+            DateTime actualDateTime = actual["datetime"].ToObject<DateTime>();
+
+            // Assert
+            Assert.Equal(expectedDateTime, actualDateTime);
+        }
+
+        [Theory]
+        [MemberData(nameof(ValidJsonData))]
+        public async Task ReadAsJsonTokenAsync_Succeeds_OnValidJson(string content, Type expectedType)
+        {
+            // Arrange
+            Initialize(TestSecret);
+            _request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+            // Act
+            JToken actual = await _receiverMock.ReadAsJsonTokenAsync(_request);
+
+            // Assert
+            Assert.IsType(expectedType, actual);
+            Assert.Equal(content, actual.ToString(Formatting.None));
         }
 
         [Fact]
@@ -590,7 +685,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ByteCompareData")]
+        [MemberData(nameof(ByteCompareData))]
         public void SecretEqual_ComparesByteArraysCorrectly(byte[] inputA, byte[] inputB, bool expected)
         {
             // Arrange
@@ -604,7 +699,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("StringCompareData")]
+        [MemberData(nameof(StringCompareData))]
         public void SecretEqual_ComparesStringsCorrectly(string inputA, string inputB, bool expected)
         {
             // Arrange

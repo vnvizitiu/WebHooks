@@ -41,7 +41,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (logger == null)
             {
-                throw new ArgumentNullException("logger");
+                throw new ArgumentNullException(nameof(logger));
             }
             _logger = logger;
         }
@@ -90,7 +90,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (workItem == null)
             {
-                throw new ArgumentNullException("workItem");
+                throw new ArgumentNullException(nameof(workItem));
             }
 
             WebHook hook = workItem.WebHook;
@@ -127,7 +127,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (workItem == null)
             {
-                throw new ArgumentNullException("workItem");
+                throw new ArgumentNullException(nameof(workItem));
             }
 
             Dictionary<string, object> body = new Dictionary<string, object>();
@@ -154,21 +154,26 @@ namespace Microsoft.AspNet.WebHooks
         /// HTTP header to the <see cref="HttpRequestMessage"/> along with the entity body.
         /// </summary>
         /// <param name="workItem">The current <see cref="WebHookWorkItem"/>.</param>
-        /// <param name="request">The request to add t</param>
-        /// <param name="body">The body to sign and add to the request</param>
+        /// <param name="request">The request to add the signature to.</param>
+        /// <param name="body">The body to sign and add to the request.</param>
         protected virtual void SignWebHookRequest(WebHookWorkItem workItem, HttpRequestMessage request, JObject body)
         {
             if (workItem == null)
             {
-                throw new ArgumentNullException("workItem");
+                throw new ArgumentNullException(nameof(workItem));
+            }
+            if (workItem.WebHook == null)
+            {
+                string msg = string.Format(CultureInfo.CurrentCulture, CustomResources.Sender_BadWorkItem, this.GetType().Name, "WebHook");
+                throw new ArgumentException(msg, "workItem");
             }
             if (request == null)
             {
-                throw new ArgumentNullException("request");
+                throw new ArgumentNullException(nameof(request));
             }
             if (body == null)
             {
-                throw new ArgumentNullException("body");
+                throw new ArgumentNullException(nameof(body));
             }
 
             byte[] secret = Encoding.UTF8.GetBytes(workItem.WebHook.Secret);

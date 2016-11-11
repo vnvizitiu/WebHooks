@@ -17,13 +17,16 @@
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.GitHub"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Instagram"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.MailChimp"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.MyGet"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Paypal"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Pusher"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Salesforce"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Slack"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Stripe"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Trello"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.VSTS"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.WordPress"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.Zendesk"/>
 
   <!-- Unit test assemblies and helpers -->
   <assembly name="Microsoft.AspNet.WebHooks.Common.Test"/>
@@ -41,6 +44,7 @@
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.GitHub.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Instagram.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.MailChimp.Test"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.MyGet.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Paypal.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Pusher.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Salesforce.Test"/>
@@ -48,6 +52,8 @@
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Stripe.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.Trello.Test"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.VSTS.Test"/>
   <assembly name="Microsoft.AspNet.WebHooks.Receivers.WordPress.Test"/>
+  <assembly name="Microsoft.AspNet.WebHooks.Receivers.Zendesk.Test"/>
   <assembly name="Microsoft.TestUtilities"/>
 </assemblies>

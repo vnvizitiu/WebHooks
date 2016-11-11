@@ -23,7 +23,7 @@ namespace Microsoft.AspNet.WebHooks
     /// Set the '<c>MS_WebHookReceiverSecret_Instagram</c>' application setting to the application secrets, optionally using IDs
     /// to differentiate between multiple WebHooks, for example '<c>secret0, id1=secret1, id2=secret2</c>'.
     /// The corresponding WebHook URI is of the form '<c>https://&lt;host&gt;/api/webhooks/incoming/instagram/{id}</c>'.
-    /// For details about Instagram WebHooks, see <c>https://instagram.com/developer/realtime/</c>.
+    /// For details about Instagram WebHooks, see <c>https://www.instagram.com/developer/subscriptions/</c>.
     /// </summary>
     public class InstagramWebHookReceiver : WebHookReceiver
     {
@@ -54,15 +54,15 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (id == null)
             {
-                throw new ArgumentNullException("id");
+                throw new ArgumentNullException(nameof(id));
             }
             if (context == null)
             {
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             }
             if (request == null)
             {
-                throw new ArgumentNullException("request");
+                throw new ArgumentNullException(nameof(request));
             }
 
             if (request.Method == HttpMethod.Post)
@@ -138,7 +138,7 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (request == null)
             {
-                throw new ArgumentNullException("request");
+                throw new ArgumentNullException(nameof(request));
             }
 
             EnsureSecureConnection(request);
@@ -174,11 +174,11 @@ namespace Microsoft.AspNet.WebHooks
         {
             if (data == null)
             {
-                throw new ArgumentNullException("data");
+                throw new ArgumentNullException(nameof(data));
             }
             if (request == null)
             {
-                throw new ArgumentNullException("request");
+                throw new ArgumentNullException(nameof(request));
             }
 
             try

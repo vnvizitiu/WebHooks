@@ -40,11 +40,11 @@ namespace Microsoft.AspNet.WebHooks
 
             if (receivers == null)
             {
-                throw new ArgumentNullException("receivers");
+                throw new ArgumentNullException(nameof(receivers));
             }
             if (logger == null)
             {
-                throw new ArgumentNullException("logger");
+                throw new ArgumentNullException(nameof(logger));
             }
 
             IWebHookReceiverManager instance = new WebHookReceiverManager(receivers, logger);
@@ -66,16 +66,26 @@ namespace Microsoft.AspNet.WebHooks
 
             if (settings == null)
             {
-                throw new ArgumentNullException("settings");
+                throw new ArgumentNullException(nameof(settings));
             }
             if (logger == null)
             {
-                throw new ArgumentNullException("logger");
+                throw new ArgumentNullException(nameof(logger));
             }
 
             IWebHookReceiverConfig instance = new WebHookReceiverConfig(settings, logger);
             Interlocked.CompareExchange(ref _receiverConfig, instance, null);
             return _receiverConfig;
+        }
+
+        /// <summary>
+        /// Sets a default <see cref="IWebHookReceiverConfig"/> implementation which is used if none are registered with the 
+        /// Dependency Injection engine.
+        /// </summary>
+        /// <param name="instance">The <see cref="IWebHookReceiverConfig"/> to use. If <c>null</c> then a default implementation is used.</param>
+        public static void SetReceiverConfig(IWebHookReceiverConfig instance)
+        {
+            _receiverConfig = instance;
         }
 
         /// <summary>

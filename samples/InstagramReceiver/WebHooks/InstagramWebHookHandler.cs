@@ -1,7 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using InstaSharp;
+using InstaSharp.Endpoints;
+using InstaSharp.Models.Responses;
 using Microsoft.AspNet.WebHooks;
-using Newtonsoft.Json.Linq;
 
 namespace InstagramReceiver.WebHooks
 {
@@ -14,37 +15,21 @@ namespace InstagramReceiver.WebHooks
 
         public override async Task ExecuteAsync(string generator, WebHookHandlerContext context)
         {
-            // Get the WebHook client
-            InstagramWebHookClient client = Dependencies.Client;
-
             // Convert the incoming data to a collection of InstagramNotifications
             var notifications = context.GetDataOrDefault<InstagramNotificationCollection>();
+
+            // Get the config used by InstaSharp client
+            InstagramConfig config = Dependencies.InstagramConfig;
+
+            // Access media references in notifications
             foreach (var notification in notifications)
             {
-                // Use WebHook client to get detailed information about the posted media
-                JArray entries = await client.GetRecentGeoMedia(context.Id, notification.ObjectId);
-                foreach (JToken entry in entries)
+                // If we have an access token then get the media using InstaSharp.
+                OAuthResponse auth;
+                if (Dependencies.Tokens.TryGetValue(notification.UserId, out auth))
                 {
-                    InstagramPost post = entry.ToObject<InstagramPost>();
-
-                    // Image information
-                    if (post.Images != null)
-                    {
-                        InstagramMedia thumbnail = post.Images.Thumbnail;
-                        InstagramMedia lowRes = post.Images.LowResolution;
-                        InstagramMedia stdRes = post.Images.StandardResolution;
-                    }
-
-                    // Video information
-                    if (post.Videos != null)
-                    {
-                        InstagramMedia lowBandwidth = post.Videos.LowBandwidth;
-                        InstagramMedia lowRes = post.Videos.LowResolution;
-                        InstagramMedia stdRes = post.Videos.StandardResolution;
-                    }
-
-                    // Get direct links and sizes of media
-                    Uri link = post.Link;
+                    var media = new Media(config, auth);
+                    MediaResponse mediaResponse = await media.Get(notification.Data.MediaId);
                 }
             }
         }

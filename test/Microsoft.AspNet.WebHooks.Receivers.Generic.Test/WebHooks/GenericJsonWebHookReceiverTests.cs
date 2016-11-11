@@ -45,6 +45,26 @@ namespace Microsoft.AspNet.WebHooks
             }
         }
 
+        public static TheoryData<string, string> ValidPostData
+        {
+            get
+            {
+                return new TheoryData<string, string>
+                {
+                    { string.Empty, "\"data\"" },
+                    { "你好", "\"data\"" },
+                    { "id", "\"data\"" },
+                    { "id", "\"data\"" },
+                    { "id", "1234" },
+                    { "id", "1234.5678" },
+                    { "id", "{}" },
+                    { "id", "{ \"k\": \"v\"}" },
+                    { "id", "[]" },
+                    { "id", "[ 1, 2, 3, 4 ]" }
+                };
+            }
+        }
+
         [Fact]
         public void ReceiverName_IsConsistent()
         {
@@ -79,7 +99,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("InvalidCodeQueries")]
+        [MemberData(nameof(InvalidCodeQueries))]
         public async Task ReceiveAsync_Throws_IfPostHasNoCodeParameter(string query)
         {
             // Arrange
@@ -131,11 +151,12 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ValidIdData")]
-        public async Task ReceiveAsync_Succeeds_IfValidPostRequest(string id)
+        [MemberData(nameof(ValidPostData))]
+        public async Task ReceiveAsync_Succeeds_IfValidPostRequest(string id, string content)
         {
             // Arrange
             Initialize(GetConfigValue(id, TestSecret));
+            _postRequest.Content = new StringContent(content, Encoding.UTF8, "application/json");
             List<string> actions = new List<string> { "change" };
             ReceiverMock.Protected()
                 .Setup<Task<HttpResponseMessage>>("ExecuteWebHookAsync", id, RequestContext, _postRequest, actions, ItExpr.IsAny<object>())
@@ -150,7 +171,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("ValidIdData")]
+        [MemberData(nameof(ValidIdData))]
         public async Task ReceiveAsync_Succeeds_IfValidPostRequestWithAction(string id)
         {
             // Arrange

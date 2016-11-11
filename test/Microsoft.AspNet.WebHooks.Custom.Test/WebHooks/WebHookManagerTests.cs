@@ -43,6 +43,39 @@ namespace Microsoft.AspNet.WebHooks
             _response = new HttpResponseMessage();
         }
 
+        public static TheoryData<string> WebHookSecretData
+        {
+            get
+            {
+                return new TheoryData<string>
+                {
+                    null,
+                    string.Empty,
+                    " ",
+                    "\r\n",
+                    new string('a', 31),
+                    new string('你', 31),
+                    new string('a', 65),
+                    new string('你', 65),
+                };
+            }
+        }
+
+        public static TheoryData<string> WebHookUriData
+        {
+            get
+            {
+                return new TheoryData<string>
+                {
+                    null,
+                    "ftp://localhost",
+                    "telnet://localhost",
+                    "htp://localhost",
+                    "invalid://localhost",
+                };
+            }
+        }
+
         public static TheoryData<IEnumerable<WebHook>, NotificationDictionary> FilterSingleNotificationData
         {
             get
@@ -84,17 +117,49 @@ namespace Microsoft.AspNet.WebHooks
             }
         }
 
+        public static TheoryData<string> WebHookNoEchoData
+        {
+            get
+            {
+                return new TheoryData<string>
+                {
+                    "noecho",
+                    "noecho=",
+                    "noecho=value",
+                    "NoEcho",
+                    "NoEcho=",
+                    "NoEcho=value",
+                    "NOECHO",
+                    "NOECHO=",
+                    "NOECHO=value",
+                };
+            }
+        }
+
         [Theory]
-        [InlineData("ftp://localhost")]
-        [InlineData("telnet://localhost")]
-        [InlineData("htp://localhost")]
-        [InlineData("invalid://localhost")]
+        [MemberData(nameof(WebHookSecretData))]
+        public async Task VerifyWebHookAsync_Throws_IfInvalidWebHookSecret(string secret)
+        {
+            // Arrange
+            _manager = new WebHookManager(_storeMock.Object, _senderMock.Object, _loggerMock.Object, _httpClient);
+            WebHook webHook = CreateWebHook();
+            webHook.Secret = secret;
+
+            // Act
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _manager.VerifyWebHookAsync(webHook));
+
+            // Assert
+            Assert.Equal("The WebHook secret key parameter must be between 32 and 64 characters long.", ex.Message);
+        }
+
+        [Theory]
+        [MemberData(nameof(WebHookUriData))]
         public async Task VerifyWebHookAsync_Throws_IfNotHttpOrHttpsUri(string webHookUri)
         {
             // Arrange
             _manager = new WebHookManager(_storeMock.Object, _senderMock.Object, _loggerMock.Object, _httpClient);
             WebHook webHook = CreateWebHook();
-            webHook.WebHookUri = new Uri(webHookUri);
+            webHook.WebHookUri = webHookUri != null ? new Uri(webHookUri) : null;
 
             // Act
             InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _manager.VerifyWebHookAsync(webHook));
@@ -165,6 +230,29 @@ namespace Microsoft.AspNet.WebHooks
             Assert.Equal("The HTTP request echo query parameter was not returned as plain text in the response. Please return the echo parameter to verify that the WebHook is working as expected.", ex.Message);
         }
 
+        [Theory]
+        [MemberData(nameof(WebHookNoEchoData))]
+        public async Task VerifyWebHookAsync_Stops_IfNoEchoParameter(string query)
+        {
+            // Arrange
+            bool error = false;
+            _response.Content = new StringContent("Hello World");
+            _manager = new WebHookManager(_storeMock.Object, _senderMock.Object, _loggerMock.Object, _httpClient);
+            _handlerMock.Handler = (req, counter) => 
+            {
+                error = true;
+                return Task.FromResult(_response);
+            };
+            WebHook webHook = CreateWebHook();
+            webHook.WebHookUri = new Uri("http://localhost/hook?" + query);
+
+            // Act
+            await _manager.VerifyWebHookAsync(webHook);
+
+            // Assert
+            Assert.False(error);
+        }
+
         [Fact]
         public async Task VerifyWebHookAsync_Succeeds_EchoResponse()
         {
@@ -183,7 +271,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("FilterSingleNotificationData")]
+        [MemberData(nameof(FilterSingleNotificationData))]
         public void GetWorkItems_FilterSingleNotification(IEnumerable<WebHook> webHooks, NotificationDictionary notification)
         {
             // Act
@@ -198,7 +286,7 @@ namespace Microsoft.AspNet.WebHooks
         }
 
         [Theory]
-        [MemberData("FilterMultipleNotificationData")]
+        [MemberData(nameof(FilterMultipleNotificationData))]
         public void GetWorkItems_FilterMultipleNotifications(IEnumerable<WebHook> webHooks, IEnumerable<NotificationDictionary> notifications, int expected)
         {
             // Act
